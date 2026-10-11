@@ -1,3 +1,21 @@
+/*KNOWN BUGS:
+*
+* 1)
+* search the file for 'cursed' and take a gander at how shit the
+* rounding situation in C is. Or maybe I'm not educated but like
+* wtf is this? I'd expect a wrapper or something that solves this.
+* it's almost 2027 and we still can't accurately divide shit by 100.
+*
+* 2)
+* not very robust code. Positions are not very accurate.
+*
+* 3)
+* I know I violate DRY a lot, I don't give a shit, the compiler is
+* here to optimize. I don't have time cheers nor energy too think
+* about being concise and elegant all the time. It's not a bug its
+* efficiency.
+*/
+
 #include <ctype.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -8,7 +26,7 @@
 typedef struct position {
    char x_mm[6];
    char y_mm[6];
-   char orientation[3]; //180 or 0
+   char orientation[4]; //180 or 0
 } position;
 
 typedef struct pin{
@@ -157,10 +175,39 @@ float x_interval_between_pins(pin pins[], size_t pin_amount){
    return round(x_interval*100.0)/100.0;
 }
 
-int update_positions(pin pins[], size_t pin_amount, size_t y_interval, size_t x_interval){
+void print_pin(pin pins[], int i){
+   printf("=================\n");
+   printf("i = %d\n", i);
+   printf("pos.x_mm = %s\n", pins[i].pos.x_mm);
+   printf("pos.y_mm = %s\n", pins[i].pos.y_mm);
+   printf("pos.orientation = %s\n", pins[i].pos.orientation);
+}
+
+int update_positions(pin pins[], size_t pin_amount, float y_interval, float x_interval){
+   //this will be the new position data
+   char new_x_pos_mm[6]={'0'}, new_y_pos_mm[6]={'0'}, new_orientation[4]={'0'};
+   int half_pin_amount = pin_amount/2; // it's late give me a break
 
    for (int i=0; i<pin_amount; i++){
-       // ftoa(i*x_interval, pins[i].pos.x_mm, 2);
+      if (i<half_pin_amount) {
+         strcpy(new_x_pos_mm, "0");
+         snprintf(new_y_pos_mm, sizeof(pins[i].pos.y_mm), "%.2f", ((-1)*i*y_interval));
+         strcpy(new_orientation, "0");
+
+         strcpy(pins[i].pos.x_mm, new_x_pos_mm);
+         strcpy(pins[i].pos.y_mm, new_y_pos_mm);
+         strcpy(pins[i].pos.orientation, new_orientation);
+
+      } else {
+         snprintf(new_x_pos_mm, sizeof(pins[i].pos.x_mm), "%.2f", (x_interval));
+         snprintf(new_y_pos_mm, sizeof(pins[i].pos.y_mm), "%.2f", ((-1)*(i-half_pin_amount)*y_interval));
+         strcpy(new_orientation, "180");
+
+         strcpy(pins[i].pos.x_mm, new_x_pos_mm);
+         strcpy(pins[i].pos.y_mm, new_y_pos_mm);
+         strcpy(pins[i].pos.orientation, new_orientation);
+      }
+      print_pin(pins, i);
    }
    return 0;
 }
@@ -188,6 +235,8 @@ int main(int argc, char *argv[])
 
    printf("detected x interval = %f\n", x_interval);
    printf("detected y interval = %f\n", y_interval);
+
+   update_positions(pins, pin_amount, y_interval, x_interval);
 
    // printf("\npin_amount = %d\n", pin_amount);
    // printf("pins[0].pos.x_mm = %s\n", pins[0].pos.x_mm);
