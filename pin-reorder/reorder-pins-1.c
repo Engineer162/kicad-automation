@@ -1,6 +1,8 @@
 #include <ctype.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef struct position {
    char x_mm[6];
@@ -14,7 +16,7 @@ typedef struct pin{
    char number[50];
 } pin;
 
-int get_pos(pin pins[], FILE *fp){
+size_t get_pos(pin pins[], FILE *fp){
    char ppch = '0';
    char pch = '0';
    char ch = '0';
@@ -66,10 +68,10 @@ int get_pos(pin pins[], FILE *fp){
       pch = ch;
    }
    rewind(fp);
-   return 0;
+   return pin_amount;
 }
 
-int get_name_and_number(pin pins[], FILE *fp){
+size_t get_name_and_number(pin pins[], FILE *fp){
    char ppch = '0';
    char pch = '0';
    char ch = '0';
@@ -110,6 +112,18 @@ int get_name_and_number(pin pins[], FILE *fp){
    pch = ch;
 
    rewind(fp);
+   return pin_amount;
+}
+
+//this function signature is enforced by qsort, any other won't work
+int compare(const void* a, const void* b){
+   const pin* pina = (const pin*)a;
+   const pin* pinb = (const pin*)b;
+   return strcmp(pina->name, pinb->name);
+}
+
+int reorder(pin pins[], FILE *fp, size_t pin_amount){
+   qsort(pins, pin_amount, sizeof(pin), compare);
    return 0;
 }
 
@@ -126,8 +140,11 @@ int main(int argc, char *argv[])
    }
 
    pin pins[5000] = {0};
-   get_pos(pins, fp);
+   //pin amount can be used to check if both functions parsed the same
+   //amount of pins but idc for now
+   size_t pin_amount = get_pos(pins, fp);
    get_name_and_number(pins, fp);
+   reorder(pins, fp, pin_amount);
 
    // printf("\npin_amount = %d\n", pin_amount);
    // printf("pins[0].pos.x_mm = %s\n", pins[0].pos.x_mm);
