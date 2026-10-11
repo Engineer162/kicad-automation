@@ -14,28 +14,13 @@ typedef struct pin{
    char number[50];
 } pin;
 
-
-int main(int argc, char *argv[])
-{
-
-   FILE *fp = fopen(argv[1], "r");
-   char ppch = '0';
+int get_pos(pin pins[], FILE *fp){
+      char ppch = '0';
    char pch = '0';
    char ch = '0';
    int pinid = 0;
    int i, j = 0;
    int pin_amount = 0;
-
-   pin pins[5000] = {0};
-
-   if (argc<2) {
-      printf("Usage: %s <symbol_file.kicad_sym>\n", argv[0]);
-   }
-
-   if (fp == NULL) {
-      printf("\033[31m Error opening %s \n\r", argv[1]);
-      return 1;
-   }
 
    while ((ch = fgetc(fp)) != EOF){
       // ======== detect "pin" =============
@@ -80,6 +65,25 @@ int main(int argc, char *argv[])
       ppch = pch;
       pch = ch;
    }
+
+   return 0;
+}
+
+int main(int argc, char *argv[])
+{
+   if (argc<2) {
+      printf("Usage: %s <symbol_file.kicad_sym>\n", argv[0]);
+   }
+
+   FILE *fp = fopen(argv[1], "r");
+   if (fp == NULL) {
+      printf("\033[31m Error opening %s \n\r", argv[1]);
+      return 1;
+   }
+
+   pin pins[5000] = {0};
+   get_pos(pins, fp);
+
    // printf("\npin_amount = %d\n", pin_amount);
    // printf("pins[0].pos.x_mm = %s\n", pins[0].pos.x_mm);
    // printf("pins[0].pos.y_mm = %s\n", pins[0].pos.y_mm);
