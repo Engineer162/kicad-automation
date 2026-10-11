@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 typedef struct position {
    char x_mm[6];
@@ -22,7 +23,7 @@ size_t get_pos(pin pins[], FILE *fp){
    char ch = '0';
    int pinid = 0;
    int i = 0, j = 0;
-   int pin_amount = 0;
+   size_t pin_amount = 0;
 
    while ((ch = fgetc(fp)) != EOF){
       // ======== detect "pin" =============
@@ -58,7 +59,6 @@ size_t get_pos(pin pins[], FILE *fp){
                }
                j = 0;
                i++;
-               putchar(ch);
             }
             ppch = pch;
             pch = ch;
@@ -77,7 +77,7 @@ size_t get_name_and_number(pin pins[], FILE *fp){
    char ch = '0';
    int pinid = 0;
    int i = 0, j = 0;
-   int pin_amount = 0;
+   size_t pin_amount = 0;
 
    while ((ch = fgetc(fp)) != EOF){
       // ======== detect "e "" (for "name ") =============
@@ -100,7 +100,6 @@ size_t get_name_and_number(pin pins[], FILE *fp){
          }
          j = 0;
          i++;
-         putchar(ch);
       }
       ppch = pch;
       pch = ch;
@@ -127,6 +126,45 @@ int reorder(pin pins[], FILE *fp, size_t pin_amount){
    return 0;
 }
 
+float y_interval_between_pins(pin pins[]){
+   //needs to be calculated before sort!
+   float y_interval = fabs(atof(pins[1].pos.y_mm) - atof(pins[0].pos.y_mm));
+   return round(y_interval*100.0)/100.0;
+}
+
+float x_interval_between_pins(pin pins[], size_t pin_amount){
+   //can be calculated after sort
+   float x_interval=0;
+   int i=0;
+   // find 2 pins, with 0 and 180 deg orientation
+   // 0 orientation pins are on the left, 180 orientation pins are on
+   // the right
+   float zero_orientation_x_pos_mm=0, inv_orientation_x_pos_mm=0;
+   for (int i=0; i<pin_amount; i++) {
+      //find 0
+      if (pins[i].pos.orientation[0]=='0') {
+         zero_orientation_x_pos_mm = atof(pins[i].pos.x_mm);
+      }
+      //find 1 (180)
+      if (pins[i].pos.orientation[0]=='1') {
+         inv_orientation_x_pos_mm = atof(pins[i].pos.x_mm);
+         break;
+      }
+   }
+
+   //this is cursed
+   x_interval = fabsf(zero_orientation_x_pos_mm - inv_orientation_x_pos_mm);
+   return round(x_interval*100.0)/100.0;
+}
+
+int update_positions(pin pins[], size_t pin_amount, size_t y_interval, size_t x_interval){
+
+   for (int i=0; i<pin_amount; i++){
+       // ftoa(i*x_interval, pins[i].pos.x_mm, 2);
+   }
+   return 0;
+}
+
 int main(int argc, char *argv[])
 {
    if (argc<2) {
@@ -144,7 +182,12 @@ int main(int argc, char *argv[])
    //amount of pins but idc for now
    size_t pin_amount = get_pos(pins, fp);
    get_name_and_number(pins, fp);
+   float x_interval = x_interval_between_pins(pins, pin_amount);
+   float y_interval = y_interval_between_pins(pins);
    reorder(pins, fp, pin_amount);
+
+   printf("detected x interval = %f\n", x_interval);
+   printf("detected y interval = %f\n", y_interval);
 
    // printf("\npin_amount = %d\n", pin_amount);
    // printf("pins[0].pos.x_mm = %s\n", pins[0].pos.x_mm);
