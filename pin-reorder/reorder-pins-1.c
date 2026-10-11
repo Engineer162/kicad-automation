@@ -18,6 +18,7 @@
 
 #include <ctype.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -146,33 +147,37 @@ int reorder(pin pins[], FILE *fp, size_t pin_amount){
 
 float y_interval_between_pins(pin pins[]){
    //needs to be calculated before sort!
-   float y_interval = fabs(atof(pins[1].pos.y_mm) - atof(pins[0].pos.y_mm));
-   return round(y_interval*100.0)/100.0;
+   return fabs(strtof(pins[1].pos.y_mm, NULL) - strtof(pins[0].pos.y_mm, NULL)); // strtof instead of atof because its more precise for floating-point conversion
 }
 
-float x_interval_between_pins(pin pins[], size_t pin_amount){
+float x_interval_between_pins(const pin pins[], size_t pin_amount){ // this function does not modify the pins array, so we declare it as const
    //can be calculated after sort
-   float x_interval=0;
-   int i=0;
+   float zero_orientation_x_pos_mm = 0.0f, inv_orientation_x_pos_mm = 0.0f;
+   bool found_zero = false, found_inv = false;
+   
    // find 2 pins, with 0 and 180 deg orientation
    // 0 orientation pins are on the left, 180 orientation pins are on
    // the right
-   float zero_orientation_x_pos_mm=0, inv_orientation_x_pos_mm=0;
-   for (int i=0; i<pin_amount; i++) {
+
+   for (size_t i = 0; i < pin_amount; i++) {
       //find 0
-      if (pins[i].pos.orientation[0]=='0') {
-         zero_orientation_x_pos_mm = atof(pins[i].pos.x_mm);
+      if (pins[i].pos.orientation[0]=='0' && !found_zero) {
+         zero_orientation_x_pos_mm = strtof(pins[i].pos.x_mm, NULL);
+         found_zero = true;
       }
       //find 1 (180)
-      if (pins[i].pos.orientation[0]=='1') {
-         inv_orientation_x_pos_mm = atof(pins[i].pos.x_mm);
+      if (pins[i].pos.orientation[0]=='1' && !found_inv) {
+         inv_orientation_x_pos_mm = strtof(pins[i].pos.x_mm, NULL);
+         found_inv = true;
+      }
+      // if both pins are found, we can exit the loop early
+      if (found_zero && found_inv) {
          break;
       }
    }
 
-   //this is cursed
-   x_interval = fabsf(zero_orientation_x_pos_mm - inv_orientation_x_pos_mm);
-   return round(x_interval*100.0)/100.0;
+   //this is cursed (Is it cursed because you have to round to resolve floating-point inaccuracies?)
+   return fabsf(zero_orientation_x_pos_mm - inv_orientation_x_pos_mm);
 }
 
 void print_pin(pin pins[], int i){
@@ -186,26 +191,33 @@ void print_pin(pin pins[], int i){
 int update_positions(pin pins[], size_t pin_amount, float y_interval, float x_interval){
    //this will be the new position data
    char new_x_pos_mm[6]={'0'}, new_y_pos_mm[6]={'0'}, new_orientation[4]={'0'};
-   int half_pin_amount = pin_amount/2; // it's late give me a break
+   int half_pin_amount = 0;
+   if (pin_amount > 1) { // only calculate half_pin_amount if there are more than 1 pin
+      half_pin_amount = pin_amount/2; // it's late give me a break
+   } else {
+      half_pin_amount = pin_amount;
+   }
 
+
+   // Use strncpy instead of strcpy to avoid buffer overflows
    for (int i=0; i<pin_amount; i++){
       if (i<half_pin_amount) {
-         strcpy(new_x_pos_mm, "0");
+         strncpy(new_x_pos_mm, "0", sizeof(new_x_pos_mm));
          snprintf(new_y_pos_mm, sizeof(pins[i].pos.y_mm), "%.2f", ((-1)*i*y_interval));
-         strcpy(new_orientation, "0");
+         strncpy(new_orientation, "0", sizeof(new_orientation));
 
-         strcpy(pins[i].pos.x_mm, new_x_pos_mm);
-         strcpy(pins[i].pos.y_mm, new_y_pos_mm);
-         strcpy(pins[i].pos.orientation, new_orientation);
+         strncpy(pins[i].pos.x_mm, new_x_pos_mm, sizeof(pins[i].pos.x_mm));
+         strncpy(pins[i].pos.y_mm, new_y_pos_mm, sizeof(pins[i].pos.y_mm));
+         strncpy(pins[i].pos.orientation, new_orientation, sizeof(pins[i].pos.orientation));
 
       } else {
          snprintf(new_x_pos_mm, sizeof(pins[i].pos.x_mm), "%.2f", (x_interval));
          snprintf(new_y_pos_mm, sizeof(pins[i].pos.y_mm), "%.2f", ((-1)*(i-half_pin_amount)*y_interval));
-         strcpy(new_orientation, "180");
+         strncpy(new_orientation, "180", sizeof(new_orientation));
 
-         strcpy(pins[i].pos.x_mm, new_x_pos_mm);
-         strcpy(pins[i].pos.y_mm, new_y_pos_mm);
-         strcpy(pins[i].pos.orientation, new_orientation);
+         strncpy(pins[i].pos.x_mm, new_x_pos_mm, sizeof(pins[i].pos.x_mm));
+         strncpy(pins[i].pos.y_mm, new_y_pos_mm, sizeof(pins[i].pos.y_mm));
+         strncpy(pins[i].pos.orientation, new_orientation, sizeof(pins[i].pos.orientation));
       }
       print_pin(pins, i);
    }
@@ -216,11 +228,12 @@ int main(int argc, char *argv[])
 {
    if (argc<2) {
       printf("Usage: %s <symbol_file.kicad_sym>\n", argv[0]);
+      return 1; // if we dont return here, the program will continue and crash.
    }
 
    FILE *fp = fopen(argv[1], "r");
    if (fp == NULL) {
-      printf("\033[31m Error opening %s \n\r", argv[1]);
+      fprintf(stderr, "\033[31m Error opening %s \n\r \033[0m", argv[1]); // add "\033[0m" to reset the terminal color back to default, else the terminal will be red for the remaining session. Also use fprintf with stderr for error messages.
       return 1;
    }
 
