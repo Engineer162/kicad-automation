@@ -15,11 +15,11 @@ typedef struct pin{
 } pin;
 
 int get_pos(pin pins[], FILE *fp){
-      char ppch = '0';
+   char ppch = '0';
    char pch = '0';
    char ch = '0';
    int pinid = 0;
-   int i, j = 0;
+   int i = 0, j = 0;
    int pin_amount = 0;
 
    while ((ch = fgetc(fp)) != EOF){
@@ -65,7 +65,51 @@ int get_pos(pin pins[], FILE *fp){
       ppch = pch;
       pch = ch;
    }
+   rewind(fp);
+   return 0;
+}
 
+int get_name_and_number(pin pins[], FILE *fp){
+   char ppch = '0';
+   char pch = '0';
+   char ch = '0';
+   int pinid = 0;
+   int i = 0, j = 0;
+   int pin_amount = 0;
+
+   while ((ch = fgetc(fp)) != EOF){
+      // ======== detect "e "" (for "name ") =============
+      if (ppch=='e' && pch ==' ' && ch=='"') {
+         pin_amount++;
+         while ((ch = fgetc(fp))!='"') {
+            //copy name
+            pins[i].name[j] = ch;
+            j++;
+         }
+         j = 0;
+
+         //jump to next "
+         // while ((ch = fgetc(fp)) !='"' && ch!='\0'){}
+
+         //copy number (can include letters)
+         // while ((ch = fgetc(fp)) !='"' && ch!='\0'){
+         //    pins[i].number[j] = ch;
+         //    j++;
+         // }
+         j = 0;
+         i++;
+         putchar(ch);
+      }
+      ppch = pch;
+      pch = ch;
+   }
+
+   //exit loop at "effect"
+   // if (ppch=='e' && pch =='f' && ch=='f') break;
+   ppch = pch;
+   pch = ch;
+
+   rewind(fp);
    return 0;
 }
 
@@ -83,6 +127,7 @@ int main(int argc, char *argv[])
 
    pin pins[5000] = {0};
    get_pos(pins, fp);
+   get_name_and_number(pins, fp);
 
    // printf("\npin_amount = %d\n", pin_amount);
    // printf("pins[0].pos.x_mm = %s\n", pins[0].pos.x_mm);
