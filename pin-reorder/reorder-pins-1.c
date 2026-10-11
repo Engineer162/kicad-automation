@@ -32,7 +32,7 @@ int get_pos(pin pins[], FILE *fp){
             if (ppch=='a' && pch =='t' && ch==' ') {
 
                //copy x position number
-               while ((ch = fgetc(fp)) !=' ' && ch!='\0'){
+               while ((ch = fgetc(fp)) !=' '){
                   if (isdigit(ch) || ch =='.' || ch=='-'){
                      pins[i].pos.x_mm[j] = ch;
                      j++;
@@ -40,7 +40,7 @@ int get_pos(pin pins[], FILE *fp){
                }
                j = 0;
                //copy y position number
-               while ((ch = fgetc(fp)) !=' ' && ch!='\0'){
+               while ((ch = fgetc(fp)) !=' '){
                      if (isdigit(ch) || ch =='.' || ch=='-'){
                      pins[i].pos.y_mm[j] = ch;
                      j++;
@@ -89,13 +89,13 @@ int get_name_and_number(pin pins[], FILE *fp){
          j = 0;
 
          //jump to next "
-         // while ((ch = fgetc(fp)) !='"' && ch!='\0'){}
+         while ((ch = fgetc(fp)) !='"'){}
 
          //copy number (can include letters)
-         // while ((ch = fgetc(fp)) !='"' && ch!='\0'){
-         //    pins[i].number[j] = ch;
-         //    j++;
-         // }
+         while ((ch = fgetc(fp)) !='"'){
+            pins[i].number[j] = ch;
+            j++;
+         }
          j = 0;
          i++;
          putchar(ch);
